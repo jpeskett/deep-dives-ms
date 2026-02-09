@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep Dive: Aoife Moore — Root Cause Gap Analysis</title>
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #1a1a1a;
+    max-width: 816px;
+    margin: 0 auto;
+    padding: 40px 60px;
+    background: #fff;
+  }
+  .report-header {
+    background: linear-gradient(135deg, #1a365d, #2c5282);
+    color: white;
+    padding: 28px 32px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  .report-header h1 { font-size: 22pt; margin: 0 0 4px 0; font-weight: 700; letter-spacing: -0.3px; }
+  .report-header .subtitle { font-size: 12pt; opacity: 0.9; margin: 0; font-weight: 400; }
+  .report-meta {
+    background: #edf2f7; padding: 10px 32px; border-radius: 0 0 8px 8px;
+    font-size: 9pt; color: #4a5568; margin-bottom: 28px;
+    display: flex; justify-content: space-between;
+  }
+  .alert-box {
+    background: #fff5f5; border-left: 5px solid #e53e3e;
+    padding: 16px 20px; margin: 20px 0 28px 0; border-radius: 0 6px 6px 0;
+  }
+  .alert-box .alert-title { font-weight: 700; color: #c53030; font-size: 11pt; margin: 0 0 6px 0; }
+  .alert-box p { margin: 4px 0; font-size: 10pt; color: #742a2a; }
+  h2 {
+    font-size: 14pt; color: #1a365d; border-bottom: 2px solid #2c5282;
+    padding-bottom: 6px; margin: 32px 0 16px 0; font-weight: 700; page-break-after: avoid;
+  }
+  h3 { font-size: 11pt; color: #2d3748; margin: 18px 0 8px 0; font-weight: 600; }
+  .kpi-row { display: flex; gap: 12px; margin: 16px 0 24px 0; flex-wrap: wrap; }
+  .kpi-card {
+    flex: 1; min-width: 120px; background: #f7fafc; border: 1px solid #e2e8f0;
+    border-radius: 8px; padding: 14px 16px; text-align: center;
+  }
+  .kpi-card .kpi-value { font-size: 22pt; font-weight: 700; margin: 0; line-height: 1.1; }
+  .kpi-card .kpi-label { font-size: 8pt; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; margin: 4px 0 0 0; }
+  .kpi-red .kpi-value { color: #e53e3e; }
+  .kpi-amber .kpi-value { color: #d69e2e; }
+  .kpi-green .kpi-value { color: #38a169; }
+  .kpi-blue .kpi-value { color: #2c5282; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px 0; font-size: 10pt; }
+  thead th {
+    background: #2c5282; color: white; padding: 10px 12px; text-align: left;
+    font-weight: 600; font-size: 9pt; text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+  tbody tr:nth-child(even) { background: #f7fafc; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 9pt; font-weight: 600; }
+  .badge-red { background: #fed7d7; color: #c53030; }
+  .badge-amber { background: #fefcbf; color: #975a16; }
+  .badge-green { background: #c6f6d5; color: #276749; }
+  .evidence-list { list-style: none; padding: 0; margin: 12px 0; }
+  .evidence-list li {
+    padding: 10px 14px 10px 42px; margin: 6px 0; background: #f7fafc;
+    border-left: 3px solid #cbd5e0; border-radius: 0 4px 4px 0;
+    position: relative; font-size: 10pt; line-height: 1.5;
+  }
+  .evidence-list li::before {
+    content: attr(data-ref); position: absolute; left: 8px; top: 10px;
+    font-size: 8pt; font-weight: 700; color: #2c5282; background: #ebf4ff;
+    padding: 1px 5px; border-radius: 3px;
+  }
+  .evidence-list li.critical { border-left-color: #e53e3e; background: #fff5f5; }
+  .root-cause-box {
+    background: #fff5f5; border: 2px solid #fc8181; border-radius: 8px;
+    padding: 20px 24px; margin: 16px 0; text-align: center;
+  }
+  .root-cause-box .rc-label { font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; color: #e53e3e; margin: 0 0 4px 0; font-weight: 600; }
+  .root-cause-box .rc-value { font-size: 18pt; font-weight: 700; color: #c53030; margin: 0; }
+  .root-cause-box .rc-secondary { font-size: 10pt; color: #742a2a; margin: 8px 0 0 0; }
+  .intervention {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 14px 0; border-bottom: 1px solid #e2e8f0;
+  }
+  .intervention:last-child { border-bottom: none; }
+  .intervention .int-number {
+    flex-shrink: 0; width: 32px; height: 32px; background: #2c5282; color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12pt;
+  }
+  .intervention .int-body { flex: 1; }
+  .intervention .int-title { font-weight: 700; color: #1a365d; font-size: 10.5pt; margin: 0 0 4px 0; }
+  .intervention .int-detail { font-size: 9.5pt; color: #4a5568; margin: 0; line-height: 1.5; }
+  .intervention .int-timeline {
+    display: inline-block; background: #ebf8ff; color: #2b6cb0;
+    padding: 2px 8px; border-radius: 10px; font-size: 8pt; font-weight: 600; margin-top: 6px;
+  }
+  .projection-box {
+    background: #f0fff4; border: 1px solid #9ae6b4; border-radius: 8px;
+    padding: 16px 24px; margin: 16px 0; display: flex;
+    justify-content: space-between; align-items: center;
+  }
+  .projection-box .proj-left { font-size: 10pt; color: #276749; }
+  .projection-box .proj-right { text-align: right; }
+  .projection-box .proj-answer { font-size: 16pt; font-weight: 700; color: #276749; }
+  .projection-box .proj-caveat { font-size: 8.5pt; color: #68d391; font-style: italic; }
+  .warning-callout {
+    background: #fffbeb; border: 1px solid #f6e05e; border-radius: 6px;
+    padding: 12px 16px; margin: 12px 0; font-size: 9.5pt; color: #744210;
+  }
+  .warning-callout strong { color: #975a16; }
+  .bottom-line {
+    background: #1a365d; color: white; padding: 20px 28px; border-radius: 8px;
+    margin: 32px 0 16px 0; font-size: 11pt; line-height: 1.6;
+  }
+  .bottom-line .bl-label { font-size: 9pt; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; margin: 0 0 6px 0; }
+  .bottom-line p { margin: 0; font-weight: 500; }
+  .report-footer {
+    font-size: 8pt; color: #a0aec0; text-align: center;
+    margin-top: 24px; padding-top: 12px; border-top: 1px solid #e2e8f0;
+  }
+  @media print {
+    body { padding: 20px 40px; }
+    .report-header, .kpi-card, .root-cause-box, .bottom-line, thead th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+  .test-timeline { display: flex; gap: 16px; margin: 12px 0 16px 0; flex-wrap: wrap; }
+  .test-item { flex: 1; min-width: 160px; border-radius: 6px; padding: 12px 14px; text-align: center; }
+  .test-item.fail { background: #fed7d7; border: 1px solid #fc8181; }
+  .test-item.weak { background: #fefcbf; border: 1px solid #f6e05e; }
+  .test-item .test-date { font-size: 8pt; color: #718096; margin: 0; }
+  .test-item .test-grade { font-size: 9pt; font-weight: 600; color: #2d3748; margin: 2px 0; }
+  .test-item .test-score { font-size: 18pt; font-weight: 700; margin: 2px 0; }
+  .test-item.fail .test-score { color: #c53030; }
+  .test-item.weak .test-score { color: #975a16; }
+  .test-item .test-result { font-size: 8pt; font-weight: 600; text-transform: uppercase; }
+  .test-item.fail .test-result { color: #e53e3e; }
+  .test-item.weak .test-result { color: #d69e2e; }
+  .trend-bar-container { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .trend-bar {
+    height: 24px; border-radius: 4px; display: flex; align-items: center;
+    justify-content: center; color: white; font-size: 9pt; font-weight: 600;
+  }
+  .domain-table td.low { background: #fed7d7; color: #c53030; font-weight: 700; }
+  .domain-table td.mid { background: #fefcbf; color: #975a16; font-weight: 600; }
+  .domain-table td.high { background: #c6f6d5; color: #276749; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<div class="report-header">
+  <h1>Deep Dive: Aoife Moore</h1>
+  <p class="subtitle">Root Cause Gap Analysis &mdash; MAP Growth &amp; Curriculum Alignment</p>
+</div>
+<div class="report-meta">
+  <span><strong>Campus:</strong> Alpha School Austin</span>
+  <span><strong>Grade 8</strong> &nbsp;|&nbsp; <strong>Course:</strong> Math Academy &mdash; Prealgebra (G6-8)</span>
+  <span><strong>Report Date:</strong> Feb 2026</span>
+</div>
+
+<!-- ============ ALERT ============ -->
+<div class="alert-box">
+  <p class="alert-title">KEY FINDING</p>
+  <p>Aoife is an 8th grader tested at Grade 8 on MAP but has only mastered through Grade 5. She has progressed through <strong>3 course levels</strong> (4th &rarr; 5th &rarr; Prealgebra) and earned 3,431 XP across 67 days with <strong>improving accuracy</strong> &mdash; but her Growth X of 1.6 still falls short of the 2.0 target, and her MAP RIT of 236 (70th percentile) masks a <strong>3-grade gap</strong>.</p>
+</div>
+
+<!-- ============ KPI CARDS ============ -->
+<div class="kpi-row">
+  <div class="kpi-card kpi-red">
+    <p class="kpi-value">3</p>
+    <p class="kpi-label">Grade Gap<br>(AG 8 vs HMG 5)</p>
+  </div>
+  <div class="kpi-card kpi-amber">
+    <p class="kpi-value">1.6&times;</p>
+    <p class="kpi-label">Growth X<br>(Target: 2.0&times;)</p>
+  </div>
+  <div class="kpi-card kpi-green">
+    <p class="kpi-value">3,431</p>
+    <p class="kpi-label">Total XP<br>Earned</p>
+  </div>
+  <div class="kpi-card kpi-red">
+    <p class="kpi-value">0</p>
+    <p class="kpi-label">Effective Grades<br>Mastered 25-26</p>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <p class="kpi-value">236</p>
+    <p class="kpi-label">MAP RIT<br>(70th %ile)</p>
+  </div>
+</div>
+
+<!-- ============ SECTION 1: SNAPSHOT ============ -->
+<h2>1 &mdash; Student Snapshot</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Student</th><th>Campus</th><th>Enrollment Grade</th><th>Current Course</th><th>Age Grade</th><th>Course Grade</th><th>HMG</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Aoife Moore</strong></td>
+      <td>Alpha School Austin</td>
+      <td>8</td>
+      <td>MA Prealgebra</td>
+      <td>8</td>
+      <td>6 &ndash; 8</td>
+      <td><span class="badge badge-red">5</span></td>
+    </tr>
+  </tbody>
+</table>
+<p style="font-size: 9.5pt; color: #4a5568; margin-top: -8px;">
+  Knowledge Grade = 6 &nbsp;|&nbsp; Effective Grade = 6 &nbsp;|&nbsp; R90 = 5 &nbsp;|&nbsp; HMG 25-26 = 5 &nbsp;|&nbsp; FastMath HMG = 5 (Completed)
+</p>
+
+<!-- ============ SECTION 2: PROGRESS ============ -->
+<h2>2 &mdash; Course Progress &amp; Effort</h2>
+<table>
+  <thead>
+    <tr>
+      <th>% Complete</th><th>Total XP Earned</th><th>XP Remaining</th><th>Days Active</th><th>Avg XP / Day</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>~Early stage</strong></td>
+      <td>3,431</td>
+      <td>MISSING (dashboard not provided)</td>
+      <td>67</td>
+      <td><strong>51.2</strong></td>
+    </tr>
+  </tbody>
+</table>
+<div class="warning-callout">
+  <strong>Course Progression:</strong> Aoife advanced through 3 Math Academy courses (4th grade &rarr; 5th grade &rarr; Prealgebra) plus supplemental work in Edia and Freckle. Her 51.2 XP/day rate is over 2&times; the 25 XP/day benchmark. She also completed Edia G5 hole-filling and supplementary courses, showing breadth of effort.
+</div>
+
+<!-- ============ SECTION 3: ASSESSMENTS ============ -->
+<h2>3 &mdash; Assessment &amp; Practice Signals</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Test Attempts</th><th>Last Test Date</th><th>Hole-Filling</th><th>Accuracy Trend</th><th>Fluency Signal</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2</td>
+      <td>Sep 17, 2025</td>
+      <td><span class="badge badge-green">Active (Edia G5)</span></td>
+      <td><span class="badge badge-green">Improving</span></td>
+      <td><span class="badge badge-amber">Below level</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Internal Test History</h3>
+<div class="test-timeline">
+  <div class="test-item fail">
+    <p class="test-date">Sep 17, 2025</p>
+    <p class="test-grade">Grade 8 &mdash; Attempt 1</p>
+    <p class="test-score">34.0%</p>
+    <p class="test-result">Failed</p>
+  </div>
+  <div class="test-item fail">
+    <p class="test-date">Sep 17, 2025</p>
+    <p class="test-grade">Grade 8 &mdash; Attempt 2</p>
+    <p class="test-score">43.2%</p>
+    <p class="test-result">Failed</p>
+  </div>
+</div>
+<p style="font-size:9.5pt; color:#718096; text-align:center; margin-top:-4px;">No test taken since September 2025 &mdash; over <strong>4 months</strong> without reassessment. No G5, G6, or G7 test attempted.</p>
+
+<h3>Accuracy Trend</h3>
+<div style="margin: 8px 0 4px 0;">
+  <div class="trend-bar-container">
+    <span style="font-size:9pt; width:110px; color:#4a5568;">First 5 sessions:</span>
+    <div class="trend-bar" style="width: 86%; background: #38a169;">86.0%</div>
+  </div>
+  <div class="trend-bar-container">
+    <span style="font-size:9pt; width:110px; color:#4a5568;">Last 5 sessions:</span>
+    <div class="trend-bar" style="width: 88.7%; background: #38a169;">88.7%</div>
+  </div>
+  <p style="font-size:9pt; color:#38a169; text-align:right; margin:2px 0 0 0; font-weight:600;">&uarr; 2.7 percentage points</p>
+</div>
+
+<h3>Fluency Note</h3>
+<p style="font-size:10pt; color:#4a5568;">
+  R90 = 5 (internal test performance at Grade 5 level) vs. Age Grade 8. FastMath HMG = 5 means she has <strong>completed</strong> FastMath (the course caps at Grade 5). She needs G6+ fluency support beyond what FastMath provides.
+</p>
+
+<!-- ============ SECTION 4: GROWTH ============ -->
+<h2>4 &mdash; Learning Velocity &amp; Growth</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Growth X</th><th>Expected</th><th>Meets 2&times; Target?</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="badge badge-amber">1.6&times;</span></td>
+      <td>2.0&times;</td>
+      <td><span class="badge badge-red">No</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div style="background:#f7fafc; border:1px solid #e2e8f0; border-radius:6px; padding:14px 18px; font-size:10pt; margin:8px 0;">
+  <strong>Fall-to-Winter:</strong> +5 RIT (estimated, based on Fall RIT ~231 &rarr; Winter 236) = 1.6&times; growth.<br>
+  <strong>Achievement Percentile:</strong> 70th &nbsp;|&nbsp; <strong>Growth Percentile:</strong> 35th<br>
+  <strong>Trajectory:</strong> Classified as &ldquo;decay&rdquo; in MAP predictions &mdash; growth rate is declining, not accelerating. Despite strong XP production, external test gains are below target.
+</div>
+
+<!-- ============ SECTION 5: MAP ============ -->
+<h2>5 &mdash; MAP Growth Context</h2>
+
+<table class="domain-table">
+  <thead>
+    <tr>
+      <th>MAP Domain</th><th>Domain RIT</th><th>Overall RIT</th><th>Gap</th><th>Risk Level</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Statistics &amp; Probability</td>
+      <td class="low">227</td>
+      <td>236</td>
+      <td><strong>&minus;9</strong></td>
+      <td><span class="badge badge-red">Critical</span></td>
+    </tr>
+    <tr>
+      <td>Geometry</td>
+      <td class="mid">235</td>
+      <td>236</td>
+      <td>&minus;1</td>
+      <td><span class="badge badge-amber">Moderate</span></td>
+    </tr>
+    <tr>
+      <td>Operations &amp; Algebraic Thinking</td>
+      <td class="mid">235</td>
+      <td>236</td>
+      <td>&minus;1</td>
+      <td><span class="badge badge-amber">Moderate</span></td>
+    </tr>
+    <tr>
+      <td>The Real &amp; Complex Number Systems</td>
+      <td class="high">243</td>
+      <td>236</td>
+      <td>+7</td>
+      <td><span class="badge badge-green">Strength</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div style="background:#f7fafc; border:1px solid #e2e8f0; border-radius:6px; padding:14px 18px; font-size:10pt; margin:8px 0;">
+  <strong>Alignment Risk: <span style="color:#e53e3e;">HIGH</span></strong><br><br>
+  <strong>Key insight:</strong> Statistics &amp; Probability at RIT 227 is <strong>9 points below</strong> her overall RIT &mdash; this is a critical weakness. MA Prealgebra delivers content in a linear arithmetic/algebraic sequence with <strong>zero explicit coverage</strong> of statistics and probability at the G7-G8 level. Geometry (235) is also underexposed in the curriculum sequence she has completed.
+  <ul style="margin:6px 0 0 0; padding-left:18px;">
+    <li>R90 = 5 while tested at G8 on MAP</li>
+    <li>Failed G8 internal test twice (34%, 43%)</li>
+    <li>HMG = 5 means limited/no exposure to G6-G8 Stats, Probability, and Geometry content MAP assesses</li>
+    <li>Number Systems (243) is her clear strength &mdash; aligned with arithmetic-heavy curriculum</li>
+  </ul>
+</div>
+
+<!-- ============ SECTION 6: ROOT CAUSE ============ -->
+<h2>6 &mdash; Root Cause Analysis</h2>
+
+<div class="root-cause-box">
+  <p class="rc-label">Primary Root Cause</p>
+  <p class="rc-value">Placement Mismatch</p>
+  <p class="rc-secondary">Secondary: MAP&ndash;Curriculum Misalignment</p>
+</div>
+
+<h3>Evidence</h3>
+<ul class="evidence-list">
+  <li data-ref="1.1" class="critical"><strong>3-grade gap.</strong> HMG = 5 vs. Age Grade = 8. She is tested at Grade 8 on MAP but has only mastered through Grade 5 content. The gap means MAP is assessing domains she has had little to no exposure to.</li>
+  <li data-ref="3.1" class="critical"><strong>Failed G8 test twice.</strong> Scored 34.0% and 43.2% on the Grade 8 internal test (Sep 2025). No lower-grade test was ever administered, so her actual mastery boundary is unclear. She has not been tested in over 4 months.</li>
+  <li data-ref="5.1" class="critical"><strong>Statistics &amp; Probability = 227 RIT (&minus;9 from overall).</strong> MAP domain data reveals her weakest area is one the curriculum has zero explicit coverage for. MA Prealgebra focuses on arithmetic and algebra, leaving Stats &amp; Probability completely unaddressed.</li>
+  <li data-ref="3.1"><strong>R90 = 5.</strong> Internal test performance at Grade 5 level &mdash; 3 grades below her Age Grade. FastMath is complete (HMG = 5 = course max), yet the fluency gap persists beyond what FastMath covers.</li>
+  <li data-ref="2.1"><strong>High effort, moderate transfer.</strong> 3,431 XP across 67 days (51.2 XP/day) with improving accuracy (86% &rarr; 88.7%). She advanced through 3 courses, but Growth X = 1.6 and 0 EGs mastered this year.</li>
+  <li data-ref="4.1"><strong>Growth X = 1.6, classified as &ldquo;decay.&rdquo;</strong> Growth rate is declining despite strong effort. The 35th growth percentile means 65% of peers at her starting level grew faster.</li>
+  <li data-ref="5.1"><strong>Number Systems is her strength (243 RIT, +7).</strong> This aligns with the arithmetic-heavy curriculum she has been in. The mismatch is in domains the curriculum does <em>not</em> teach.</li>
+</ul>
+
+<!-- ============ SECTION 7: PROJECTION ============ -->
+<h2>7 &mdash; Completion Projection</h2>
+
+<div class="projection-box">
+  <div class="proj-left">
+    <strong>XP Remaining:</strong> MISSING (dashboard not provided)<br>
+    Aoife is early in MA Prealgebra after completing 4th and 5th grade courses.<br>
+    68 school days remain (~13.6 weeks)
+  </div>
+  <div class="proj-right">
+    <p class="proj-answer">Unlikely to Complete Prealgebra</p>
+    <p class="proj-caveat">But course completion is not the priority.</p>
+  </div>
+</div>
+
+<div class="warning-callout">
+  <strong>Context:</strong> Aoife only recently entered Prealgebra after completing MA 4th and 5th grade. At her pace (51.2 XP/day), she is productive, but the full Prealgebra course (~2,062 XP) would take approximately 16+ weeks at 25 XP/day. The priority is not finishing a course but closing the 3-grade gap through targeted hole-filling and domain-specific supplementation.
+</div>
+
+<!-- ============ SECTION 8: INTERVENTIONS ============ -->
+<h2>8 &mdash; Recommended Interventions</h2>
+
+<div class="intervention">
+  <div class="int-number">1</div>
+  <div class="int-body">
+    <p class="int-title">Administer G5, G6, and G7 Internal Tests Immediately</p>
+    <p class="int-detail">Aoife has only been tested at G8 (which she failed at 34% and 43%). No lower-grade tests have been attempted. Administer G5, G6, and G7 tests to establish her actual mastery ceiling and determine where foundational gaps begin. This is the most urgent data gap.</p>
+    <span class="int-timeline">Within 1 week</span>
+  </div>
+</div>
+
+<div class="intervention">
+  <div class="int-number">2</div>
+  <div class="int-body">
+    <p class="int-title">Add Targeted Statistics &amp; Probability Supplementation</p>
+    <p class="int-detail">Her MAP domain score of 227 in Stats &amp; Probability is 9 points below her overall RIT and represents her critical weakness. MA Prealgebra has zero coverage of this domain. Enroll her in Edia or Freckle modules specifically targeting G5-G7 statistics, data analysis, and probability concepts.</p>
+    <span class="int-timeline">Within 1 week</span>
+  </div>
+</div>
+
+<div class="intervention">
+  <div class="int-number">3</div>
+  <div class="int-body">
+    <p class="int-title">Add Geometry Supplementation</p>
+    <p class="int-detail">Geometry RIT (235) is at her overall level but likely below G8 expectations. MA Prealgebra&rsquo;s linear sequence may not have reached geometry content yet. Supplement with Edia or Freckle geometry modules at G5-G7 to ensure exposure before the next MAP window.</p>
+    <span class="int-timeline">Within 2 weeks</span>
+  </div>
+</div>
+
+<div class="intervention">
+  <div class="int-number">4</div>
+  <div class="int-body">
+    <p class="int-title">Continue Current Math Academy Trajectory</p>
+    <p class="int-detail">Unlike other students in this cohort, Aoife&rsquo;s accuracy is improving (86% &rarr; 88.7%) and she advanced through 3 course levels. Her effort and trajectory are positive. Do not disrupt her main course &mdash; layer supplementation <em>alongside</em> it rather than replacing it.</p>
+    <span class="int-timeline">Ongoing</span>
+  </div>
+</div>
+
+<div class="intervention">
+  <div class="int-number">5</div>
+  <div class="int-body">
+    <p class="int-title">Enroll in G6-G7 Fluency Tool for Computation</p>
+    <p class="int-detail">FastMath is complete (HMG = 5 = course max), yet R90 remains at 5. She needs G6-G7 level fluency practice &mdash; integers, decimals, fractions, and ratios &mdash; that FastMath does not provide. A supplemental fluency tool at G6-G7 will bridge the gap between completed fluency coursework and grade-level demands.</p>
+    <span class="int-timeline">Within 1 week</span>
+  </div>
+</div>
+
+<!-- ============ BOTTOM LINE ============ -->
+<div class="bottom-line">
+  <p class="bl-label">Bottom Line for Leadership</p>
+  <p>Aoife Moore is the most promising student in this cohort: strong effort (51.2 XP/day), improving accuracy, and rapid course advancement through 3 levels. But her 3-grade gap (HMG 5 vs. AG 8) and a critical MAP weakness in Statistics &amp; Probability (RIT 227, &minus;9 from overall) reveal that <strong>the curriculum is teaching the wrong content for what MAP tests.</strong> Her Number Systems strength (243) proves the curriculum <em>works</em> where it overlaps with MAP domains. <strong>The fix is supplementation in Stats/Probability and Geometry, not a course change.</strong></p>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<div class="report-footer">
+  Prepared by Educational Data Analysis Team &nbsp;&bull;&nbsp; Data sources: Student Progress Tracker, Daily Metrics, Test Results, MAP Student Profile, MAP Dashboard &nbsp;&bull;&nbsp; Feb 2026
+</div>
+
+</body>
+</html>
